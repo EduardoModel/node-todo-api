@@ -23,6 +23,16 @@ app.post('/todos', (req, res) => {
 	})
 })
 
+app.get('/todos', (req, res) => {
+	Todo.find().then((todos) => {
+		res.send({todos			//Envia de volta sendo um objeto e não um simples array como foi recebido!
+		//poderia adicionar outras propriedades aqui
+		})		
+	}, (err) => {
+		res.status(400).send(err)
+	})
+})
+
 
 
 
