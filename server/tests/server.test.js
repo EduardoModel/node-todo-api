@@ -105,7 +105,44 @@ describe('POST /todos', () => {
 			.end(done)
 		})
 	})
+})
 
-	
+describe('DELETE /todos/:id', () =>{
+	it('Deve remover um todo', (done) => {
+		let HexId = todos[1]._id.toHexString()
+
+		request(app)
+		.delete(`/todos/${HexId}`)
+		.expect(200)
+		.expect((res) => {
+			expect(res.body.todo._id).toBe(HexId)
+		})
+		.end((err, res) => {
+			if(err){
+				return done(err)
+			}
+			Todo.findById(HexId).then((todo) => {
+				expect(todo).toBeFalsy()
+				done()
+			}).catch((e) => done(e))
+		})
+
+	})
+
+	it('Deve retornar um 404 se o todo não existir', (done) => {
+		let HexId = new ObjectID().toHexString()
+
+		request(app)
+		.delete(`/todos/${HexId}`)
+		.expect(404)
+		.end(done)
+	})
+
+	it('Deve retornar 404 se o ObjectID é inválido', (done) => {
+		request(app)
+		.delete('/todos/123')
+		.expect(404)
+		.end(done)
+	})
 
 })
