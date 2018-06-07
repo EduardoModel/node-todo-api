@@ -10,6 +10,8 @@ let {User} = require('./models/user.js')
 
 let app = express()
 
+const port = process.env.PORT || 3000
+
 
 //middleware é a função json do bodyParser
 app.use(bodyParser.json())
@@ -52,8 +54,8 @@ app.get('/todos/:id', (req, res) => {
 
 
 
-app.listen(3000, () => {
-	console.log('Iniciado na porta 3000')
+app.listen(port, () => {
+	console.log(`Iniciado na porta ${port}`)
 })
 
 module.exports = {
