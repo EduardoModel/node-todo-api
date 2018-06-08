@@ -11,7 +11,9 @@ const todos = [{
 	text: 'Teste 1'
 }, {
 	_id: new ObjectID(),
-	text: 'Teste 2'
+	text: 'Teste 2',
+	completed: true,
+	completedAt: 123
 }]
 
 beforeEach((done) => {
@@ -107,7 +109,7 @@ describe('POST /todos', () => {
 	})
 })
 
-describe('DELETE /todos/:id', () =>{
+describe('DELETE /todos/:id', () => {
 	it('Deve remover um todo', (done) => {
 		let HexId = todos[1]._id.toHexString()
 
@@ -144,5 +146,47 @@ describe('DELETE /todos/:id', () =>{
 		.expect(404)
 		.end(done)
 	})
+})
 
+describe('PATCH /todos/:id', () => {
+	it('Deve atualizar o todo', (done) => {
+		let HexId = todos[0]._id.toHexString()
+		let text = 'Teste de patch'
+
+		request(app)
+		.patch(`/todos/${HexId}`)
+		.send({
+			completed: true,
+			text
+		})
+		.expect(200)
+		.expect((res) => {
+			expect(res.body.todo.text).toBe(text)
+			expect(res.body.todo.completed).toBe(true)
+			expect(typeof res.body.todo.completedAt).toBe('number')
+		})
+		.end(done)
+	})
+
+	it('Deve limpar o completedAt do todo', (done) => {
+		let HexId = todos[1]._id.toHexString()
+		let text = 'Teste de patch novo!!!'
+
+
+		request(app)
+		.patch(`/todos/${HexId}`)
+		.send({
+			text,
+			completed: false
+		})
+		.expect(200)
+		.expect((res) => {
+			expect(res.body.todo.text).toBe(text)
+			expect(res.body.todo.completed).toBe(false)
+			expect(res.body.todo.completedAt).toBeFalsy()
+		})
+		.end(done)
+		
+
+	})
 })
