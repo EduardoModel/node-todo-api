@@ -97,8 +97,24 @@ app.patch('/todos/:id', (req, res) => {
 
 		res.send({todo})
 	}).catch((e) => res.status(400).send())
+})
 
+app.post('/users', (req, res) => {
+	let body = _.pick(req.body, ['email', 'password'])
+	let user = new User(body)
 
+	/*
+	Model methods são chamados com o User, sendo o objeto do require .findByToken é um método criado por nós, são metódos mais globais, utilizados para buscar, listar, etc...
+	Instance methos são chamados no objeto mesmo, no caso user .generetaAuthToken é responsável por adicionar um token a cada usuário de forma individual, pois usa informação restrita a cada user!
+	*/
+
+	user.save().then(() => {
+		return user.generateAuthToken()
+	}).then((token) => {
+		res.header('x-auth', token).send(user)
+	}).catch((e) => {
+		res.status(400).send(e)
+	})
 })
 
 app.listen(port, () => {
