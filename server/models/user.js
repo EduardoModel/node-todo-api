@@ -35,7 +35,7 @@ let UserSchema = new mongoose.Schema({
 UserSchema.methods.toJSON = function() {
 	let user = this
 	let userObject = user.toObject()
-
+	//Reduz a resposta a apenas o id e o email do usuário!
 	return _.pick(userObject, ['_id', 'email'])
 }
 
@@ -50,6 +50,25 @@ UserSchema.methods.generateAuthToken = function() {
 
 	return user.save().then(() => {
 		return token
+	})
+}
+//Funções adicionadas no objeto statics viram métodos da classe/modelo
+UserSchema.statics.findByToken = function(token) {
+	let User = this
+	let decoded
+	//se qualquer erro ocorrer no bloco try, automaticamente ele vai pro bloco de catch
+	try{
+		decoded = jwt.verify(token, 'abc123')
+	}catch(e){
+		//Em vez de declarar toda uma nova promisse, chama só o reject!
+		return Promise.reject()
+	}
+	
+	//retorna uma promise e para buscar os blocos tem que usar aspas simples
+	return User.findOne({
+		'_id': decoded._id,
+		'tokens.token': token,
+		'tokens.access': 'auth'
 	})
 }
 
