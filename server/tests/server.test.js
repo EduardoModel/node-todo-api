@@ -1,28 +1,14 @@
 const expect = require('expect')
 const request = require('supertest')
 const {ObjectID} = require('mongodb')
-
+const {User} = require('./../models/user')
 
 const {app} = require('./../server.js')
 const {Todo} = require('./../models/todo.js')
+const {todos, populateTodos, users, populateUsers} = require('./seed/seed.js')
 
-const todos = [{
-	_id: new ObjectID(),
-	text: 'Teste 1'
-}, {
-	_id: new ObjectID(),
-	text: 'Teste 2',
-	completed: true,
-	completedAt: 123
-}]
-
-beforeEach((done) => {
-	Todo.remove({})		//remove todos os objetos já contidos dentro do database
-	.then(() => {
-		return Todo.insertMany(todos)	//Adiciona uns objetos para teste
-	}).then(() => done())	//por fim chama o done para prosseguir com o teste
-})
-
+beforeEach(populateUsers)
+beforeEach(populateTodos)
 
 
 describe('POST /todos', () => {
@@ -189,4 +175,78 @@ describe('PATCH /todos/:id', () => {
 		
 
 	})
+})
+
+describe('GET /users/me', () => {
+	it('Deve retornar um usuário se ele estiver autenticado', (done) => {
+		request(app)
+		.get('/users/me')
+		.set('x-auth', users[0].tokens[0].token)
+		.expect(200)
+		.expect((res) => {
+			expect(res.body._id).toBe(users[0]._id.toHexString())
+			expect(res.body.email).toBe(users[0].email)
+		})
+		.end(done)
+	})
+
+	it('Deve retornar 401 se não for autenticado', (done) => {
+		request(app)
+		.get('/users/me')
+		.expect(401)
+		.expect((res) => {
+			expect(res.body).toEqual({})
+		})
+		.end(done)
+	})
+})
+
+describe('POST /users', () => {
+	it("Deve criar um usuário", (done) => {
+		let email = 'exemplo@exemplo.com'
+		let password = '123mnbs'
+
+		request(app)
+		.post('/users')
+		.send({email, password})
+		.expect(200)
+		.expect((res) => {
+			expect(res.headers['x-auth']).toBeTruthy()
+			expect(res.body._id).toBeTruthy()
+			expect(res.body.email).toBe(email)
+		})
+		.end((err) => {
+			if(err){
+				return done(err)
+			}
+
+			User.findOne({email}).then((user) => {
+				expect(user).toBeTruthy()
+				expect(user.password).not.toBe(password)
+				done()
+			})
+		})
+	})
+
+	it('Deve retornar erros de validação para requisições inválidas', (done) => {
+		let email = 'pixunga@pixa'
+		let password = '1234'
+		request(app)
+		.post('/users')
+		.send({email,password})
+		.expect(400)
+		.end(done)
+	})
+
+	it('Não deve criar usuário se o email já estiver em uso', (done) => {
+		let email = users[0].email
+		let password = '1235435474'
+		request(app)
+		.post('/users')
+		.send({email,password})
+		.expect(400)
+		.end(done)
+	})
+	
+
 })
