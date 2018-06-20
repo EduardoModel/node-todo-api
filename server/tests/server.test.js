@@ -224,7 +224,7 @@ describe('POST /users', () => {
 				expect(user).toBeTruthy()
 				expect(user.password).not.toBe(password)
 				done()
-			})
+			}).catch((err) => done(err))
 		})
 	})
 
@@ -249,4 +249,55 @@ describe('POST /users', () => {
 	})
 	
 
+})
+
+describe('POST /users/login', () => {
+	it('Deve logar o usuário e retornar o auth token', (done) => {
+		request(app)
+		.post('/users/login')
+		.send({
+			email: users[1].email,
+			password: users[1].password
+		})
+		.expect(200)
+		.expect((res) => {
+			expect(res.headers['x-auth']).toBeTruthy()
+		})
+		.end((err, res) => {
+			if(err){
+				return done(err)
+			}
+
+			User.findById(users[1]._id).then((user) => {
+				expect(user.tokens[0]).toMatchObject({
+					access: 'auth',
+					token: res.headers['x-auth']
+				})
+				done()
+			}).catch((err) => done(err))
+		})
+	})
+
+	it('Deve rejeitar login inválido', (done) => {
+		request(app)
+		.post('/users/login')
+		.send({
+			email: users[1].email,
+			password: users[1].password+'123'
+		})
+		.expect(400)
+		.expect((res) => {
+			expect(res.headers['x-auth']).not.toBeTruthy()
+		})
+		.end((err, res) => {
+			if(err){
+				return done(err)
+			}
+
+			User.findById(users[1]._id).then((user) => {
+				expect(user.tokens.length).toBe(0)
+				done()
+			}).catch((err) => done(err))
+		})
+	})
 })
