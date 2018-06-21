@@ -45,7 +45,7 @@ UserSchema.methods.toJSON = function() {
 UserSchema.methods.generateAuthToken = function() {
 	let user = this
 	let access = 'auth'
-	let token = jwt.sign({_id: user._id.toHexString(), access}, 'abc123')
+	let token = jwt.sign({_id: user._id.toHexString(), access}, process.env.JWT_SECRET)
 
 	user.tokens = user.tokens.concat([{access, token}])
 
@@ -75,7 +75,7 @@ UserSchema.statics.findByToken = function(token) {
 	let decoded
 	//se qualquer erro ocorrer no bloco try, automaticamente ele vai pro bloco de catch
 	try{
-		decoded = jwt.verify(token, 'abc123')
+		decoded = jwt.verify(token, process.env.JWT_SECRET)
 	}catch(e){
 		//Em vez de declarar toda uma nova promisse, chama só o reject!
 		return Promise.reject()
