@@ -20,9 +20,10 @@ const port = process.env.PORT
 //middleware é a função json do bodyParser
 app.use(bodyParser.json())
 
-app.post('/todos', (req, res) => {
+app.post('/todos', authenticate, (req, res) => {
 	let todo = new Todo({
-		text: req.body.text
+		text: req.body.text,
+		_creator: req.user._id
 	})
 	todo.save().then((doc) => {
 		res.send(doc)
@@ -31,8 +32,10 @@ app.post('/todos', (req, res) => {
 	})
 })
 
-app.get('/todos', (req, res) => {
-	Todo.find().then((todos) => {
+app.get('/todos', authenticate, (req, res) => {
+	Todo.find({//Retorna somente os todos que tenham o id do criador delas, no caso, o nosso usuário
+		_creator: req.user._id
+	}).then((todos) => {
 		res.send({todos			//Envia de volta sendo um objeto e não um simples array como foi recebido!
 		//poderia adicionar outras propriedades aqui
 		})		
@@ -43,12 +46,15 @@ app.get('/todos', (req, res) => {
 
 //o :id é para passar algo como parâmetro na url, transforma o argumento/séries de argumentos
 //em um objeto nomeado com chave-valor
-app.get('/todos/:id', (req, res) => {
+app.get('/todos/:id', authenticate, (req, res) => {
 	let id = req.params.id
 	if(!ObjectID.isValid(id)){
 		return res.status(404).send()
 	}
-	Todo.findById(id).then((todo) => {
+	Todo.findOne({
+		_id: id,
+		_creator: req.user._id
+	}).then((todo) => {
 		if(!todo){
 			return res.status(404).send()
 		}
@@ -57,13 +63,16 @@ app.get('/todos/:id', (req, res) => {
 })
 
 
-app.delete('/todos/:id', (req, res) => {
+app.delete('/todos/:id', authenticate, (req, res) => {
 	let id = req.params.id
 	if(!ObjectID.isValid(id)){
 		return res.status(404).send()
 	}
 
-	Todo.findByIdAndRemove(id).then((todo) => {
+	Todo.findOneAndRemove({
+		_id: id,
+		_creator: req.user._id
+	}).then((todo) => {
 		if(!todo){
 			return res.status(404).send()
 		}
@@ -71,7 +80,7 @@ app.delete('/todos/:id', (req, res) => {
 	}).catch((e) => res.status(400).send())
 })
 
-app.patch('/todos/:id', (req, res) => {
+app.patch('/todos/:id', authenticate,(req, res) => {
 	let id = req.params.id
 	//o metodo pick retira propriedades de um objeto, passando-as atraves do argumento da função
 	let body = _.pick(req.body, ['text', 'completed'])
@@ -87,7 +96,10 @@ app.patch('/todos/:id', (req, res) => {
 		body.completedAt = null
 	}
 
-	Todo.findByIdAndUpdate(id, {
+	Todo.findOneAndUpdate({
+		_id: id,
+		_creator: req.user._id
+	}, {
 		$set: body
 	}, {
 		new: true

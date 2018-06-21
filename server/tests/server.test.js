@@ -18,6 +18,7 @@ describe('POST /todos', () => {
 
 		request(app)
 		.post('/todos')
+		.set('x-auth', users[0].tokens[0].token)
 		.send({text})
 		.expect(200)
 		.expect((res) => {
@@ -40,6 +41,7 @@ describe('POST /todos', () => {
 	it('não deve criar um todo com informações inválidas no campo body', (done) => {
 		request(app)
 		.post('/todos')
+		.set('x-auth', users[0].tokens[0].token)
 		.send({})
 		.expect(400)
 		.end((err, res) => {
@@ -53,45 +55,57 @@ describe('POST /todos', () => {
 		})
 
 	})
+})
 
-	describe('GET /todos', () => {
-		it('Deve retornar todos os todos', (done) => {
-			request(app)
-			.get('/todos')
-			.expect(200)
-			.expect((res) => {
-				expect(res.body.todos.length).toBe(2)
-			})
-			.end(done)
+describe('GET /todos', () => {
+	it('Deve retornar todos os todos', (done) => {
+		request(app)
+		.get('/todos')
+		.set('x-auth', users[0].tokens[0].token)
+		.expect(200)
+		.expect((res) => {
+			expect(res.body.todos.length).toBe(1)
 		})
+		.end(done)
+	})
+})
+
+describe('GET /todos/:id', () => {
+	it('Deve retornar o doc todo', (done) => {
+		request(app)
+		.get(`/todos/${todos[0]._id.toHexString()}`)
+		.set('x-auth', users[0].tokens[0].token)
+		.expect(200)
+		.expect((res) => {
+			expect(res.body.todo.text).toBe(todos[0].text)
+		})
+		.end(done)
 	})
 
-	describe('GET /todos/:id', () => {
-		it('Deve retornar o doc todo', (done) => {
-			request(app)
-			.get(`/todos/${todos[0]._id.toHexString()}`)
-			.expect(200)
-			.expect((res) => {
-				expect(res.body.todo.text).toBe(todos[0].text)
-			})
-			.end(done)
-		})
+	it('deve retornar um 404 se o todo não for encontrado', (done) => {
+		let HexId = new ObjectID().toHexString()
 
-		it('deve retornar um 404 se o todo não for encontrado', (done) => {
-			let HexId = new ObjectID().toHexString()
+		request(app)
+		.get(`/todos/${HexId}`)
+		.set('x-auth', users[0].tokens[0].token)
+		.expect(404)
+		.end(done)
+	})
 
-			request(app)
-			.get(`/todos/${HexId}`)
-			.expect(404)
-			.end(done)
-		})
+	it('deve retornar 404 para ids que não são objetos', (done) => {
+		request(app)
+		.get('/todos/123')
+		.set('x-auth', users[0].tokens[0].token)
+		.expect(404)
+		.end(done)
+	})
 
-		it('deve retornar 404 para ids que não são objetos', (done) => {
-			request(app)
-			.get('/todos/123')
-			.expect(404)
-			.end(done)
-		})
+	it('Não deve retornar o doc todo criado por outro usuário', (done) => {
+		request(app)
+		.get(`/todos/${todos[1]._id.toHexString()}`)
+		.set('x-auth', users[0].tokens[0].token)
+		.expect(404)
+		.end(done)
 	})
 })
 
@@ -101,6 +115,7 @@ describe('DELETE /todos/:id', () => {
 
 		request(app)
 		.delete(`/todos/${HexId}`)
+		.set('x-auth', users[1].tokens[0].token)
 		.expect(200)
 		.expect((res) => {
 			expect(res.body.todo._id).toBe(HexId)
@@ -117,11 +132,31 @@ describe('DELETE /todos/:id', () => {
 
 	})
 
+	it('Não deve remover um todo', (done) => {
+		let HexId = todos[0]._id.toHexString()
+
+		request(app)
+		.delete(`/todos/${HexId}`)
+		.set('x-auth', users[1].tokens[0].token)
+		.expect(404)
+		.end((err, res) => {
+			if(err){
+				return done(err)
+			}
+			Todo.findById(HexId).then((todo) => {
+				expect(todo).toBeTruthy()
+				done()
+			}).catch((e) => done(e))
+		})
+
+	})
+
 	it('Deve retornar um 404 se o todo não existir', (done) => {
 		let HexId = new ObjectID().toHexString()
 
 		request(app)
 		.delete(`/todos/${HexId}`)
+		.set('x-auth', users[1].tokens[0].token)
 		.expect(404)
 		.end(done)
 	})
@@ -129,6 +164,7 @@ describe('DELETE /todos/:id', () => {
 	it('Deve retornar 404 se o ObjectID é inválido', (done) => {
 		request(app)
 		.delete('/todos/123')
+		.set('x-auth', users[1].tokens[0].token)
 		.expect(404)
 		.end(done)
 	})
@@ -141,6 +177,7 @@ describe('PATCH /todos/:id', () => {
 
 		request(app)
 		.patch(`/todos/${HexId}`)
+		.set('x-auth', users[0].tokens[0].token)
 		.send({
 			completed: true,
 			text
@@ -154,6 +191,21 @@ describe('PATCH /todos/:id', () => {
 		.end(done)
 	})
 
+	it('Não deve atualizar o todo caso for outro usuário', (done) => {
+		let HexId = todos[0]._id.toHexString()
+		let text = 'Teste de patch'
+
+		request(app)
+		.patch(`/todos/${HexId}`)
+		.set('x-auth', users[1].tokens[0].token)
+		.send({
+			completed: true,
+			text
+		})
+		.expect(404)
+		.end(done)
+	})
+
 	it('Deve limpar o completedAt do todo', (done) => {
 		let HexId = todos[1]._id.toHexString()
 		let text = 'Teste de patch novo!!!'
@@ -161,6 +213,7 @@ describe('PATCH /todos/:id', () => {
 
 		request(app)
 		.patch(`/todos/${HexId}`)
+		.set('x-auth', users[1].tokens[0].token)
 		.send({
 			text,
 			completed: false
@@ -269,7 +322,7 @@ describe('POST /users/login', () => {
 			}
 
 			User.findById(users[1]._id).then((user) => {
-				expect(user.tokens[0]).toMatchObject({
+				expect(user.tokens[1]).toMatchObject({
 					access: 'auth',
 					token: res.headers['x-auth']
 				})
@@ -295,7 +348,7 @@ describe('POST /users/login', () => {
 			}
 
 			User.findById(users[1]._id).then((user) => {
-				expect(user.tokens.length).toBe(0)
+				expect(user.tokens.length).toBe(1)
 				done()
 			}).catch((err) => done(err))
 		})
@@ -319,4 +372,4 @@ describe('DELETE /users/me/token', () => {
 			}).catch((err) => done(err))
 		})
 	})
-})
+}) 

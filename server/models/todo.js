@@ -15,6 +15,11 @@ let Todo = mongoose.model('Todos', {
 	completedAt: {
 		type: Number,
 		default: null	//<---  validator
+	},
+	_creator: {
+		type: mongoose.Schema.Types.ObjectId,
+		required: true
+
 	}
 })
 
