@@ -53,6 +53,22 @@ UserSchema.methods.generateAuthToken = function() {
 		return token
 	})
 }
+
+
+UserSchema.methods.removeToken = function(token) {
+	let user = this
+
+	//faz a atualização do vetor de tokens do usuário
+	return user.update({
+		$pull: {	//remove qualquer elemento que bater com a informação passada
+			tokens: {	//busca dentro do vetor de tokens
+				token 	//Vai remover todo o objeto, eleminando o tipo de acesso tmb
+			}
+		}
+	})
+}
+
+
 //Funções adicionadas no objeto statics viram métodos da classe/modelo
 UserSchema.statics.findByToken = function(token) {
 	let User = this
@@ -108,6 +124,9 @@ UserSchema.pre('save', function(next) {
 		next()
 	}
 })
+
+
+
 
 let User = mongoose.model('Users', UserSchema)
 
